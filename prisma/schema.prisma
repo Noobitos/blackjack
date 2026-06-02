@@ -9,15 +9,16 @@ datasource db {
 
 // role: "USER" | "ADMIN"
 model User {
-  id           String        @id @default(cuid())
-  username     String        @unique
-  password     String
-  role         String        @default("USER")
-  pocket       Decimal       @default(0)
-  bank         Decimal       @default(0)
-  createdAt    DateTime      @default(now())
-  transactions Transaction[]
-  gameSessions GameSession[]
+  id             String         @id @default(cuid())
+  username       String         @unique
+  password       String
+  role           String         @default("USER")
+  pocket         Decimal        @default(0)
+  bank           Decimal        @default(0)
+  createdAt      DateTime       @default(now())
+  transactions   Transaction[]
+  gameSessions   GameSession[]
+  rouletteGames  RouletteGame[]
 }
 
 // type: "CASH_GENERATION" | "ADMIN_SEND" | "TABLE_FUND" | "BANK_DEPOSIT" | "BANK_WITHDRAW" | "BET_PLACED" | "BET_WIN" | "BET_PUSH"
@@ -31,14 +32,18 @@ model Transaction {
   createdAt DateTime @default(now())
 }
 
+// tableType: "BLACKJACK" | "ROULETTE"
 model Table {
-  id       Int           @id
-  name     String
-  minBet   Decimal
-  maxBet   Decimal
-  balance  Decimal       @default(50000000)
-  isOpen   Boolean       @default(true)
-  sessions GameSession[]
+  id             Int            @id
+  name           String
+  tableType      String         @default("BLACKJACK")
+  minBet         Decimal
+  maxBet         Decimal
+  minBetOutside  Decimal?
+  balance        Decimal        @default(50000000)
+  isOpen         Boolean        @default(true)
+  sessions       GameSession[]
+  rouletteGames  RouletteGame[]
 }
 
 // status: "IN_PROGRESS" | "COMPLETED"
@@ -56,4 +61,19 @@ model GameSession {
   status     String   @default("IN_PROGRESS")
   outcome    String?
   createdAt  DateTime @default(now())
+}
+
+// bets: JSON string — [{type, target, amount}]
+// result: winning number 0–36
+model RouletteGame {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  tableId     Int
+  table       Table    @relation(fields: [tableId], references: [id])
+  bets        String
+  result      Int
+  totalBet    Decimal
+  totalPayout Decimal
+  createdAt   DateTime @default(now())
 }

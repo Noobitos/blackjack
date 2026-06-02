@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { TABLE_CONFIGS, STARTING_TABLE_BALANCE } from "../lib/tables";
+import { BLACKJACK_TABLE_CONFIGS, ROULETTE_TABLE_CONFIGS, STARTING_TABLE_BALANCE } from "../lib/tables";
 
 const prisma = new PrismaClient();
 
@@ -10,31 +10,27 @@ async function main() {
   await prisma.user.upsert({
     where: { username: "admin" },
     update: {},
-    create: {
-      username: "admin",
-      password: adminPassword,
-      role: "ADMIN",
-      pocket: 0,
-      bank: 0,
-    },
+    create: { username: "admin", password: adminPassword, role: "ADMIN", pocket: 0, bank: 0 },
   });
-  console.log("Admin account created: admin / admin123");
+  console.log("Admin account: admin / admin123");
 
-  for (const cfg of TABLE_CONFIGS) {
+  for (const cfg of BLACKJACK_TABLE_CONFIGS) {
     await prisma.table.upsert({
       where: { id: cfg.id },
-      update: {},
-      create: {
-        id: cfg.id,
-        name: cfg.name,
-        minBet: cfg.minBet,
-        maxBet: cfg.maxBet,
-        balance: STARTING_TABLE_BALANCE,
-        isOpen: true,
-      },
+      update: { tableType: "BLACKJACK" },
+      create: { id: cfg.id, name: cfg.name, tableType: "BLACKJACK", minBet: cfg.minBet, maxBet: cfg.maxBet, balance: STARTING_TABLE_BALANCE, isOpen: true },
     });
   }
-  console.log("5 tables seeded with $50M each");
+  console.log("5 blackjack tables seeded");
+
+  for (const cfg of ROULETTE_TABLE_CONFIGS) {
+    await prisma.table.upsert({
+      where: { id: cfg.id },
+      update: { tableType: "ROULETTE" },
+      create: { id: cfg.id, name: cfg.name, tableType: "ROULETTE", minBet: cfg.minBetNumber, minBetOutside: cfg.minBetOutside, maxBet: cfg.maxBet, balance: STARTING_TABLE_BALANCE, isOpen: true },
+    });
+  }
+  console.log("2 roulette tables seeded");
 }
 
 main()
