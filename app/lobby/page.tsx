@@ -70,6 +70,23 @@ export default async function LobbyPage() {
           })}
         </div>
 
+        {/* Poker tables */}
+        <div className="mb-10">
+          <h2 className="text-lg font-semibold text-green-400 mb-4">♠ Poker (Texas Hold'em)</h2>
+          <Link
+            href="/poker"
+            className="block bg-black/40 border border-green-600/30 rounded-xl p-5 hover:border-green-500/60 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-white font-bold">Poker Tables</div>
+                <div className="text-gray-400 text-sm mt-1">vs NPC (10M budget) · Multiplayer up to 6 players</div>
+              </div>
+              <div className="text-green-400 font-semibold text-sm">Enter →</div>
+            </div>
+          </Link>
+        </div>
+
         {/* Roulette tables */}
         <h2 className="text-lg font-semibold text-red-400 mb-4">🎰 Roulette</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

@@ -19,9 +19,10 @@ model User {
   transactions   Transaction[]
   gameSessions   GameSession[]
   rouletteGames  RouletteGame[]
+  pokerPlayers   PokerPlayer[]
 }
 
-// type: "CASH_GENERATION" | "ADMIN_SEND" | "TABLE_FUND" | "BANK_DEPOSIT" | "BANK_WITHDRAW" | "BET_PLACED" | "BET_WIN" | "BET_PUSH"
+// type: CASH_GENERATION|ADMIN_SEND|TABLE_FUND|BANK_DEPOSIT|BANK_WITHDRAW|BET_PLACED|BET_WIN|BET_PUSH|POKER_BUYIN|POKER_CASHOUT|POKER_WIN
 model Transaction {
   id        String   @id @default(cuid())
   userId    String
@@ -76,4 +77,62 @@ model RouletteGame {
   totalBet    Decimal
   totalPayout Decimal
   createdAt   DateTime @default(now())
+}
+
+// tableType: "NPC" | "MULTIPLAYER"
+model PokerTable {
+  id          Int            @id
+  name        String
+  tableType   String         // "NPC" | "MULTIPLAYER"
+  smallBlind  Decimal
+  bigBlind    Decimal
+  minBuyIn    Decimal
+  maxBuyIn    Decimal
+  maxPlayers  Int            @default(6)
+  isOpen      Boolean        @default(true)
+  sessions    PokerSession[]
+  npc         PokerNpc?
+}
+
+// NPC budget for the NPC poker table
+model PokerNpc {
+  id       Int        @id @default(1)
+  tableId  Int        @unique
+  table    PokerTable @relation(fields: [tableId], references: [id])
+  budget   Decimal    @default(10000000)
+  isActive Boolean    @default(true)
+}
+
+// status: "WAITING" | "ACTIVE" | "BETWEEN_HANDS" | "COMPLETED"
+// phase: "PREFLOP" | "FLOP" | "TURN" | "RIVER" | "SHOWDOWN" | null
+// gameState: JSON blob with deck, communityCards, pot, currentBet, roundBets, hasActed, activeSeat
+model PokerSession {
+  id         String        @id @default(cuid())
+  tableId    Int
+  table      PokerTable    @relation(fields: [tableId], references: [id])
+  status     String        @default("WAITING")
+  phase      String?
+  handNumber Int           @default(0)
+  dealerSeat Int           @default(0)
+  gameState  String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  players    PokerPlayer[]
+}
+
+// status: "WAITING" | "ACTIVE" | "FOLDED" | "ALL_IN" | "SITTING_OUT"
+// hand: JSON [Card, Card] — null between hands; hidden from other players
+model PokerPlayer {
+  id        String       @id @default(cuid())
+  sessionId String
+  session   PokerSession @relation(fields: [sessionId], references: [id])
+  userId    String?
+  user      User?        @relation(fields: [userId], references: [id])
+  isNpc     Boolean      @default(false)
+  seat      Int
+  chips     Decimal      @default(0)
+  status    String       @default("WAITING")
+  hand      String?
+  isAllIn   Boolean      @default(false)
+  joinedAt  DateTime     @default(now())
 }

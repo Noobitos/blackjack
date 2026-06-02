@@ -29,6 +29,12 @@ export default function Navbar({ username, role, pocket }: NavbarProps) {
           Tables
         </Link>
         <Link
+          href="/poker"
+          className={`text-sm ${path.startsWith("/poker") ? "text-yellow-400" : "text-gray-300 hover:text-white"}`}
+        >
+          Poker
+        </Link>
+        <Link
           href="/dashboard"
           className={`text-sm ${path === "/dashboard" ? "text-yellow-400" : "text-gray-300 hover:text-white"}`}
         >

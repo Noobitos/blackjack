@@ -1,0 +1,42 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+
+export async function POST(req: Request) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { sessionId } = await req.json();
+  const ps = await prisma.pokerSession.findUnique({
+    where: { id: sessionId },
+    include: { players: true, table: { include: { npc: true } } },
+  });
+
+  if (!ps) return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  if (ps.status === "ACTIVE") return NextResponse.json({ error: "Cannot cash out mid-hand" }, { status: 400 });
+
+  const humanPlayer = ps.players.find((p) => p.userId === session.user.id);
+  if (!humanPlayer) return NextResponse.json({ error: "Not in session" }, { status: 403 });
+
+  const chips = Number(humanPlayer.chips);
+  const npcPlayer = ps.players.find((p) => p.isNpc)!;
+  const npcChipsNow = Number(npcPlayer.chips);
+
+  // Update NPC budget based on final chip count
+  const originalNpcChips = Number(ps.table.npc?.budget ?? 0) - (npcChipsNow - Number(npcPlayer.chips));
+  // simpler: just set budget = npcChipsNow (already tracked per-hand)
+  const newNpcBudget = npcChipsNow;
+  const npcIsActive = newNpcBudget >= 500_000;
+
+  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  await prisma.$transaction([
+    prisma.pokerSession.update({ where: { id: sessionId }, data: { status: "COMPLETED" } }),
+    prisma.user.update({ where: { id: session.user.id }, data: { pocket: Number(user.pocket) + chips } }),
+    prisma.pokerNpc.update({ where: { tableId: ps.tableId }, data: { budget: newNpcBudget, isActive: npcIsActive } }),
+    prisma.transaction.create({ data: { userId: session.user.id, type: "POKER_CASHOUT", amount: chips, note: `NPC Poker cash out` } }),
+  ]);
+
+  return NextResponse.json({ chipsReturned: chips, pocket: Number(user.pocket) + chips });
+}
