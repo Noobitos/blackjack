@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import PlayingCard from "@/components/PlayingCard";
 import type { Card } from "@/lib/blackjack";
@@ -55,6 +55,39 @@ export default function NpcPokerClient({ sessionId, initialState, smallBlind, bi
   const isYourTurn = state.activeSeat === state.yourSeat && state.status === "ACTIVE" && state.phase !== "SHOWDOWN";
   const toCall = Math.max(0, state.currentBet - state.yourRoundBet);
   const canCheck = toCall === 0;
+  const isHandOver = state.status === "BETWEEN_HANDS" || state.status === "COMPLETED";
+
+  // On mount (and when not your turn), poll state endpoint to auto-resolve NPC actions
+  useEffect(() => {
+    if (isYourTurn || isHandOver) return;
+    if (state.status !== "ACTIVE") return;
+
+    const refresh = async () => {
+      try {
+        const res = await fetch(`/api/poker/npc/state/${sessionId}`);
+        const data = await res.json();
+        if (!res.ok) return;
+        setState((prev) => ({
+          ...prev,
+          phase: data.phase ?? prev.phase,
+          status: data.status,
+          pot: data.pot,
+          communityCards: data.communityCards,
+          currentBet: data.currentBet,
+          activeSeat: data.activeSeat,
+          yourChips: data.yourChips,
+          npcChips: data.npcChips,
+          yourHand: data.yourHand ?? prev.yourHand,
+          yourRoundBet: data.yourRoundBet,
+        }));
+      } catch { /* ignore */ }
+    };
+
+    refresh();
+    const id = setInterval(refresh, 3000);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isYourTurn, state.status, sessionId]);
 
   async function sendAction(action: string, amount?: number) {
     setError("");
@@ -155,7 +188,6 @@ export default function NpcPokerClient({ sessionId, initialState, smallBlind, bi
 
   const yourWon = handResult?.winners[state.yourSeat] ?? 0;
   const npcWon = handResult?.winners[state.yourSeat === 0 ? 1 : 0] ?? 0;
-  const isHandOver = state.status === "BETWEEN_HANDS" || state.status === "COMPLETED";
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
